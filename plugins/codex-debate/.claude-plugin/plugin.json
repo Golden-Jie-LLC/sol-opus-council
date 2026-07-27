@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "codex-debate",
+  "displayName": "Codex Debate",
+  "description": "Second opinions: iterative adversarial debates between Claude and Codex over any subject, from specs, designs, and code to non-technical positions, ending in genuine agreement or a documented dispute",
+  "version": "0.1.0",
+  "author": {
+    "name": "octanevz",
+    "email": "octanevz@gmx.net"
+  },
+  "homepage": "https://github.com/octanevz/codex-debate",
+  "repository": "https://github.com/octanevz/codex-debate",
+  "license": "MIT",
+  "keywords": [
+    "adversarial-review",
+    "ai-debate",
+    "claude-code-plugin",
+    "debate",
+    "devils-advocate",
+    "llm-council",
+    "llm-debate",
+    "multi-agent",
+    "multi-agent-debate",
+    "second-opinion"
+  ]
+}

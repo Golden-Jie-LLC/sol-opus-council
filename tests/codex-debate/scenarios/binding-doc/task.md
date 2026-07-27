@@ -1,0 +1,1 @@
+Debate the position document at ./subject.md with Codex. I will rely on the outcome to gate our team's policy PR, so I need a binding, mutually agreed record — not just an opinion. Apply warranted concessions to the document and report the result.

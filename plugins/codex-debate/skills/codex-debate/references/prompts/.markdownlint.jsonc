@@ -1,0 +1,8 @@
+{
+  // These files are prompt payloads sent verbatim to Codex, not documents:
+  // headings would corrupt the payload (MD041), and layout follows prompt
+  // structure rather than document conventions (MD032).
+  "extends": "../../../../../../.markdownlint.jsonc",
+  "MD041": false,
+  "MD032": false
+}

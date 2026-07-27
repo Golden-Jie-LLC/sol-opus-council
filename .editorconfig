@@ -1,0 +1,11 @@
+# Shell style for the test harnesses' top-level scripts and stubs; shfmt
+# reads these settings natively, so a plain `shfmt -w <file>` applies them
+# without flags. Nested scenario scripts (tests/*/scenarios/*/checks.sh)
+# deliberately stay on shfmt's default style, as they always have.
+root = true
+
+[tests/*/{*.sh,bin/codex}]
+indent_style = space
+indent_size = 4
+switch_case_indent = true
+space_redirects = true

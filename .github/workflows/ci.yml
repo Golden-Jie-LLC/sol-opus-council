@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install shellcheck and shfmt
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q shellcheck
+          curl -sSfL -o /tmp/shfmt \
+            "https://github.com/mvdan/sh/releases/download/v3.10.0/shfmt_v3.10.0_linux_amd64"
+          # pinned digest from the release's sha256sums.txt
+          echo "1f57a384d59542f8fac5f503da1f3ea44242f46dff969569e80b524d64b71dbc  /tmp/shfmt" \
+            | sha256sum -c -
+          sudo install -m 0755 /tmp/shfmt /usr/local/bin/shfmt
+
+      - name: shellcheck
+        run: |
+          # every tracked shell script and test stub
+          git ls-files '*.sh' 'tests/*/bin/*' | xargs shellcheck
+
+      - name: shfmt
+        run: shfmt -d .
+
+      - name: markdownlint
+        run: npx --yes markdownlint-cli2@0.23.2 "**/*.md"
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code@2.1.220
+
+      - name: Validate marketplace and plugin manifests (strict)
+        run: |
+          claude plugin validate . --strict
+          claude plugin validate plugins/codex-debate --strict
+
+      - name: Install smoke test
+        run: tests/plugin-install/smoke.sh

@@ -1,0 +1,7 @@
+{
+  // Wide tables and one-sentence-per-line prose are intentional here.
+  "MD013": false,
+  // Changelog-style files repeat section headings (e.g. "Highlights") under
+  // each version; only sibling duplicates are a mistake.
+  "MD024": { "siblings_only": true }
+}
