@@ -36,7 +36,7 @@ An example of what a run looks like, using the prompt ``Debate `specs/auth-desig
 
 ### Debate shapes
 
-How you frame the charge decides what the debate actually tests. Three shapes have grown out of real sessions; they form a ladder of independence, each testing more than the last at a higher cost in rounds. Each prompt below is ready to copy, with paths and subjects swapped for your own. The shapes are prompt patterns that Claude carries out while leading the debate, not separate protocol modes with machinery of their own; in the blind shape, for example, independence rests on Claude keeping the two lists apart until both are locked in.
+How you frame the charge decides what the debate actually tests. Six shapes have grown out of real sessions; together they form a ladder of independence and cost. The first three keep a single independent reading and vary what the attack targets; the next two buy additional independent readings; the last buys independence from the debate itself. Each prompt below is ready to copy, with paths and subjects swapped for your own. The shapes are prompt patterns that Claude carries out while leading the debate, not separate protocol modes with machinery of their own: in the blind shape, independence rests on Claude keeping the two lists apart until both are locked in; in the fresh-eyes shape, on Claude starting a genuinely new Codex session instead of resuming the old one.
 
 1. **Single prosecutor**, the default shape: Codex attacks, Claude rules on each objection and applies what survives. One reading, adversarially checked; right when you want your work stress-tested by an independent reviewer.
 
@@ -44,16 +44,34 @@ How you frame the charge decides what the debate actually tests. Three shapes ha
    Debate `specs/auth-design.md` with Codex until you agree
    ```
 
-2. **Pre-registered assessment**: Claude writes down its own assessment before Codex speaks, then Codex attacks that assessment and fills the gaps. Claude's reading cannot be anchored on Codex's, and the attack tests it directly; note that Codex still reviews with Claude's list in view, so only one side reads independently.
+2. **Socratic interrogation**: Codex attacks with questions instead of findings — each objection is a question the document should answer and doesn't. Claude answers or concedes the gap, answers that survive the attack are written in, and evasive answers draw the next round's fire. The same cost rung as single prosecutor, but pointed at what the document fails to say rather than flaws in what it says; prefer it for early drafts, policies, and specs whose main risk is the unstated. Expect slower convergence than a defect hunt: in the live session behind this prompt, good answers kept inviting follow-up questions and the round cap ended the debate, with the still-open questions reported unresolved — often exactly the deliverable you wanted.
+
+   ```text
+   Have Codex interrogate `docs/data-retention.md`: attack it with the questions it fails to answer, and debate the gaps until you agree
+   ```
+
+3. **Devil's advocate**: the subject is a decision already made, not a document under construction. Codex builds the strongest genuine case against it, steelmanning the rejected alternative, while Claude defends the decision on its merits; the debate converges on a joint verdict — the decision stands with its residual risks named, or both sides agree it should be revisited. Still one adversarially checked reading; what changes is the success condition, which no longer requires the attack to "win". Prefer it before committing to something hard to reverse. Typical yield, seen in the live session behind this prompt: the decision survives, but picks up obligations and named risks its original rationale lacked.
+
+   ```text
+   We decided to pin exact tool versions in CI rather than track latest. Have Codex play devil's advocate: it makes the strongest case against the decision, you defend it, and you debate to a joint verdict with residual risks named
+   ```
+
+4. **Pre-registered assessment**: Claude writes down its own assessment before Codex speaks, then Codex attacks that assessment and fills the gaps. Claude's reading cannot be anchored on Codex's, and the attack tests it directly; note that Codex still reviews with Claude's list in view, so only one side reads independently.
 
    ```text
    Assess `docs/incident-runbook.md` yourself first and write down your findings; then have Codex attack your assessment and fill any gaps, debating to agreement
    ```
 
-3. **Blind commit, then cross-attack**: both sides review the subject with no sight of the other's findings and lock in their lists before either is revealed, then attack each other's lists until one joint list stands. Two fully independent readings, mutually checked; the most thorough and most expensive shape. The reason it exists: in the live sessions these prompts grew out of, the two blind lists had near-zero overlap (an informal observation from a handful of runs, not a measured result), so any shape with a single independent reading leaves the other side's blind spots untested.
+5. **Blind commit, then cross-attack**: both sides review the subject with no sight of the other's findings and lock in their lists before either is revealed, then attack each other's lists until one joint list stands. Two fully independent readings, mutually checked; the most thorough and most expensive standalone shape. The reason it exists: in the live sessions these prompts grew out of, the two blind lists had near-zero overlap (an informal observation from a handful of runs, not a measured result), so any shape with a single independent reading leaves the other side's blind spots untested.
 
    ```text
    You and Codex both review `src/billing/` for defects independently. Lock in your findings blind, then cross-attack each other's lists and debate to a joint final list
+   ```
+
+6. **Fresh-eyes verdict**: an add-on to any shape above rather than a shape of its own. After the debate converges, a fresh Codex session — no memory of the debate, no stake in its compromises — attacks the agreed result, and Claude rules on what it finds. What it tests is convergence itself: a negotiated agreement drifts toward what both debaters will accept, and the session that negotiated it cannot see that drift. It costs one extra Codex session on top of the debate it checks, and its findings tend to be real, so budget an exchange or two to settle them: in the live session behind this prompt, the fresh reviewer's first reply found eight problems in a result both sides had just signed off, one of them a compromise carried over from the debate. Fresh objections still open when you stop are reported unresolved, like any capped debate.
+
+   ```text
+   Debate `specs/auth-design.md` with Codex until you agree, then have a fresh Codex session attack the agreed result and rule on what it finds
    ```
 
 ### Examples
@@ -84,6 +102,9 @@ The Mode column shows what your wording selects, including the debate shape when
 | ``Assess `docs/incident-runbook.md` yourself first and write down your findings, then have Codex attack your assessment, debating to agreement; check in with me each round`` | `interactive` (implied by "check in with me each round"), pre-registered assessment | Claude writes its findings down before Codex speaks, then Codex attacks that assessment and fills the gaps; you approve every ruling before it is sent; the agreed assessment lands in a new position file, and the runbook itself is not changed |
 | ``You and Codex both review `src/billing/` for defects independently; lock in your findings blind, then cross-attack each other's lists and debate to a joint final list`` | `auto`, advisory, blind cross-attack | Two fully independent readings, locked in before either is revealed, then attacked against each other; the joint defect list lands in a new position file; opinion outcome, no code changed |
 | ``Binding: you and Codex both review `src/billing/` for defects independently; lock in your findings blind, then cross-attack to a joint list the team will rely on`` | `auto`, binding (named), blind cross-attack | Two fully independent readings, locked in before either is revealed, then attacked against each other; the joint defect list lands in a new position file, and the agreement names the exact reviewed versions it covers |
+| ``Have Codex interrogate `docs/data-retention.md`: attack it with the questions it fails to answer, and debate the gaps until you agree`` | `auto` (default), Socratic interrogation | Codex's objections are the questions the document leaves unanswered; answers that survive the attack are written into the file round by round, and questions still open at the end are reported unresolved |
+| `We decided to adopt event sourcing for the order service. Have Codex play devil's advocate against that decision; only interrupt me if you two get stuck` | `deadlock` (implied), devil's advocate | Codex steelmans the rejected alternatives while Claude defends the decision, and ties come back to you; the joint verdict — the decision stands with residual risks named, or should be revisited — lands in a new position file |
+| ``Binding: debate `docs/api-policy.md` with Codex until you agree, then have a fresh Codex session attack the agreed version before you record it`` | `auto`, binding (named), fresh-eyes verdict | After convergence, a new Codex session with no stake in the debate's compromises attacks the agreed version; the recorded agreement covers only what survives that attack, anchored to the exact agreed version, with any still-open fresh objections reported unresolved |
 
 #### Non-technical
 
@@ -97,6 +118,9 @@ The subject of a debate does not have to be software engineering: any document o
 | `Discuss with Codex whether we should move the user conference online; only interrupt me if you two get stuck` | `deadlock` (implied) | Autonomous until the same point stays disputed two consecutive rounds with neither side moving, then you break the tie; the agreed recommendation lands in a new position file |
 | ``Binding: debate `handbook/remote-work-policy.md` with Codex; HR will rely on the result`` | `auto`, binding (named) | The policy is pinned and versioned each round; the final report anchors the agreement to the exact agreed version and states where the record is kept |
 | ``You and Codex both critique `drafts/keynote-outline.md` independently; lock in your findings blind, then cross-attack and debate to one joint list`` | `auto` (default mode), blind cross-attack | Both critiques are locked in before either is revealed, then merged through mutual attack; the joint critique lands in a new position file, and your draft is not changed |
+| ``Have Codex interrogate `handbook/parental-leave-policy.md`: attack it with the questions it fails to answer and debate the gaps until you agree; check in with me each round`` | `interactive` (implied by "check in with me each round"), Socratic interrogation | You see each unanswered question and steer every answer before it is sent back; agreed answers are written into the policy round by round |
+| `We decided to drop the print edition of the newsletter. Have Codex play devil's advocate and debate to a joint verdict` | `auto` (default), devil's advocate | Codex makes the strongest case for keeping print while Claude defends the decision; the joint verdict with residual risks named lands in a new position file |
+| `Debate my fundraising letter with Codex until you agree, then get a fresh Codex session to attack what you agreed on` | `auto` (default), fresh-eyes verdict | Once the letter converges, a fresh session with no memory of the debate attacks the agreed version; what survives is the deliverable, and fresh objections still open are reported unresolved |
 
 #### Additional examples for [Herdr](https://herdr.dev/) users
 
