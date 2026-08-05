@@ -1,0 +1,287 @@
+{
+  "schemaVersion": 1,
+  "subject": "Defect review of src/billing/ — blind commit, then cross-attack",
+  "date": "2026-08-05",
+  "participants": ["codex", "claude"],
+  "shape": "Blind commit, then cross-attack (+ fresh-eyes verdict)",
+  "mode": "auto",
+  "rigor": "binding",
+  "roundCap": 2,
+  "termination": "Ended at round cap — 2 points unresolved",
+  "bindingAnchor": "Pinned to commit range a3f19c2..7e44b81 · joint list recorded against src/billing/ at 7e44b81",
+  "preRegistered": {
+    "speaker": "claude",
+    "role": "Own assessment",
+    "lockLabel": "Locked in before Codex spoke",
+    "findings": [
+      {
+        "id": "C1",
+        "text": "invoice.py:41 — invoice_total accumulates currency in float; rounding at the end hides per-line drift."
+      },
+      {
+        "id": "C2",
+        "text": "webhooks.py:88 — the payment.settled handler has no idempotency check; a redelivered webhook credits the account twice."
+      },
+      {
+        "id": "C3",
+        "text": "charge.py:57 — the retry loop backs off exponentially but without jitter; synchronized retries can stampede the payment gateway."
+      }
+    ]
+  },
+  "blindCommit": {
+    "columns": [
+      {
+        "speaker": "claude",
+        "role": "Findings",
+        "lockLabel": "Locked blind",
+        "findings": [
+          { "id": "C1", "text": "Float currency arithmetic in invoice_total." },
+          { "id": "C2", "text": "No idempotency check on payment.settled webhooks." },
+          { "id": "C3", "text": "Retry backoff lacks jitter in charge.py." }
+        ]
+      },
+      {
+        "speaker": "codex",
+        "role": "Findings",
+        "lockLabel": "Locked blind",
+        "findings": [
+          {
+            "id": "X1",
+            "text": "credits.py:19 — apply_credit does an unlocked read-modify-write of account.balance; concurrent credits race."
+          },
+          {
+            "id": "X2",
+            "text": "periods.py:33 — period_end is compared as a timezone-naive datetime; billing day boundaries shift with the server locale."
+          },
+          {
+            "id": "X3",
+            "text": "refunds.py:62 — the refund path swallows GatewayError and marks the invoice refunded anyway."
+          }
+        ]
+      }
+    ],
+    "overlapNote": "Overlap between the two blind lists: 0 of 6 findings — each reading covered blind spots the other missed, which is why this shape exists."
+  },
+  "rounds": [
+    {
+      "messages": [
+        {
+          "speaker": "codex",
+          "role": "Objection #1",
+          "objection": {
+            "id": "1",
+            "title": "Float drift changes charged totals",
+            "status": "accepted",
+            "reason": "Reproduced: 34-line invoice totals one cent high; Decimal fix agreed."
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "text": "Your C1 understates the defect. The drift is not merely cosmetic — it changes the total customers are charged:"
+            },
+            {
+              "type": "code",
+              "code": "def invoice_total(lines: list[Line]) -> float:\n    total = 0.0\n    for line in lines:\n        total += line.qty * line.unit_price   # float cents\n    return round(total, 2)                    # hides per-line drift"
+            },
+            {
+              "type": "paragraph",
+              "text": "With 30+ metered lines the accumulated error crosses a cent boundary, so round() settles on the wrong side. This must be fixed with Decimal end to end in the totaling path, not patched with per-line rounding."
+            }
+          ]
+        },
+        {
+          "speaker": "claude",
+          "role": "Ruling on #1",
+          "content": [
+            {
+              "type": "paragraph",
+              "text": "Accepted. Reproduced with a 34-line metered invoice: the float total lands one cent high. The fix converts invoice_total and its helpers to Decimal with cent quantization; C1 is upgraded from style concern to charging defect and merged with this objection in the joint list."
+            }
+          ]
+        },
+        {
+          "speaker": "codex",
+          "role": "Question #2",
+          "objection": {
+            "id": "2",
+            "title": "Webhook redelivery double-credits",
+            "status": "accepted",
+            "reason": "Gap conceded; unique-constraint dedupe on gateway event id agreed."
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "text": "On your C2: what exactly happens today when the gateway redelivers a payment.settled event — and where would your proposed dedupe record live so that two concurrent deliveries cannot both pass the check?"
+            }
+          ]
+        },
+        {
+          "speaker": "claude",
+          "role": "Answer to #2",
+          "content": [
+            {
+              "type": "paragraph",
+              "text": "Today both deliveries credit the account; nothing dedupes. The gap the question exposes is real: a check-then-insert dedupe still races. Conceded and folded into the joint list — the fix stores the gateway event id in a processed_events table with a unique constraint, and treats the constraint violation as “already handled”."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "messages": [
+        {
+          "speaker": "codex",
+          "role": "Objection #3",
+          "objection": {
+            "id": "3",
+            "title": "Decimal migration must reach the schema",
+            "status": "rejected",
+            "reason": "Column already stores integer cents; no float read path shown."
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "text": "The Decimal migration agreed in round 1 is incomplete unless it extends to persistence: the invoices.total column must move to a fixed-point type in the same change, otherwise you reintroduce float on every read."
+            }
+          ]
+        },
+        {
+          "speaker": "claude",
+          "role": "Ruling on #3",
+          "content": [
+            {
+              "type": "paragraph",
+              "text": "Rejected. The column already stores integer cents (BIGINT, see schema.sql:112); floats exist only in the in-memory totaling path that round 1 fixes. A schema migration would be churn without a defect behind it. Rebuttal stands unless Codex can show a read path that materializes the column as float — it did not."
+            }
+          ]
+        },
+        {
+          "speaker": "codex",
+          "role": "Objection #4",
+          "objection": {
+            "id": "4",
+            "title": "Timezone-naive period_end",
+            "status": "unresolved",
+            "reason": "Defect real, but anchor timezone is a product decision; cap ended debate."
+          },
+          "content": [
+            {
+              "type": "paragraph",
+              "text": "My X2 stands and your joint list still omits it: period_end comparisons are timezone-naive, so the billing day boundary moves when the host timezone changes. Pinning to UTC is a one-line fix and should go in now."
+            }
+          ]
+        },
+        {
+          "speaker": "claude",
+          "role": "Defense of the joint list",
+          "content": [
+            {
+              "type": "paragraph",
+              "text": "The defect is real, but “pin to UTC” is not obviously the fix: invoices are contractually cut at midnight in the customer’s billing timezone, and UTC pinning would shift existing customers’ period boundaries. Choosing the anchor timezone is a product decision, not a code ruling. Left unresolved — the round cap ended the debate here; the point is recorded for the owner to decide."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "verdict": {
+    "agreed": [
+      {
+        "text": "Joint defect list covers C1+#1 (Decimal totaling), C2+#2 (webhook dedupe via unique constraint), C3 (retry jitter), X1 (credit race — row lock on account.balance), and X3 (refund path must not swallow GatewayError)."
+      },
+      {
+        "text": "The invoices.total column stays BIGINT integer cents; no schema migration (objection #3 rejected)."
+      },
+      {
+        "text": "The joint list is recorded against src/billing/ at commit 7e44b81, per the binding anchor."
+      }
+    ],
+    "unresolved": [
+      {
+        "text": "Objection #4 — timezone anchor for period_end. Escalated to the owner.",
+        "attribution": "Codex holds UTC pinning should land now; Claude holds the anchor timezone is a product decision."
+      },
+      {
+        "text": "Fresh-eyes finding F2 — multi-currency accounts were outside the reviewed scope; expanding scope needs an owner decision."
+      }
+    ],
+    "devilsAdvocate": {
+      "title": "Devil’s-advocate verdict",
+      "outcome": "Decision stands — residual risks named",
+      "intro": "Codex prosecuted the decision to keep webhook processing synchronous; Claude defended it. The decision survives on its merits, with the obligations the prosecution earned:",
+      "points": [
+        {
+          "label": "Residual risk",
+          "text": "a gateway retry storm can saturate the worker pool; mitigation is the per-endpoint rate limit agreed in round 1."
+        },
+        {
+          "label": "Residual risk",
+          "text": "synchronous processing couples webhook latency to database write latency; revisit if p99 exceeds the gateway’s 10-second delivery timeout."
+        },
+        {
+          "label": "Obligation",
+          "text": "the rejected async alternative is re-tabled automatically if either risk materializes."
+        }
+      ]
+    }
+  },
+  "freshEyes": {
+    "speaker": "codex",
+    "sessionBadge": "New session — no debate history",
+    "role": "Attacks the agreed result",
+    "messages": [
+      {
+        "speaker": "codex-fresh",
+        "role": "Objection F1",
+        "objection": {
+          "id": "F1",
+          "title": "Dedupe table grows unbounded",
+          "status": "accepted",
+          "reason": "Agreed fix stored event ids forever; 90-day TTL added."
+        },
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "The agreed webhook dedupe stores every gateway event id in processed_events with no expiry. At current volume that table grows by ~2M rows/month forever; the unique-constraint lookup degrades with it. The agreement shipped a slow leak."
+          }
+        ]
+      },
+      {
+        "speaker": "claude",
+        "role": "Ruling on F1",
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "Accepted. A compromise blind spot: both debaters focused on correctness of the dedupe and neither priced its growth. The joint list gains a 90-day TTL purge (the gateway redelivers for at most 72 hours, so 90 days is conservative)."
+          }
+        ]
+      },
+      {
+        "speaker": "codex-fresh",
+        "role": "Objection F2",
+        "objection": {
+          "id": "F2",
+          "title": "Multi-currency accounts uncovered",
+          "status": "unresolved",
+          "reason": "Out of the reviewed scope; needs an owner decision on whether to expand it."
+        },
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "The entire joint list assumes single-currency accounts, but credits.py accepts a currency argument it never validates against the account’s ledger currency. A EUR credit applied to a USD account passes silently."
+          }
+        ]
+      },
+      {
+        "speaker": "claude",
+        "role": "Ruling on F2",
+        "content": [
+          {
+            "type": "paragraph",
+            "text": "Unresolved. The observation is plausible, but multi-currency behavior was outside the reviewed scope pinned at a3f19c2..7e44b81, and validating it means expanding the review. Recorded as open for the owner rather than folded into the agreement — the binding record covers only what was reviewed."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Debate Report — Retry-logic refactoring plan</title>
+<style>
+  :root {
+    color-scheme: light dark;
+
+    /* Claude / Anthropic — terracotta "Crail" */
+    --claude-accent: #D97757;
+    --claude-accent-strong: #B85C3E;   /* darkened for text-on-light contrast */
+    --claude-tint: #FBF1ED;
+
+    /* Codex / OpenAI — ChatGPT green-teal */
+    --codex-accent: #10A37F;
+    --codex-accent-strong: #0B7A5F;    /* darkened for text-on-light contrast */
+    --codex-tint: #EBF7F3;
+
+    --bg: #FAF9F7;
+    --surface: #FFFFFF;
+    --text: #1F1E1C;
+    --text-muted: #5C594F;
+    --border: #E4E1DA;
+    --code-bg: #F1EFEA;
+    --verdict-tint: #F4F2EE;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --claude-accent: #E08B6D;
+      --claude-accent-strong: #E8A188;
+      --claude-tint: #322622;
+
+      --codex-accent: #2BB894;
+      --codex-accent-strong: #52C9AB;
+      --codex-tint: #16302A;
+
+      --bg: #1A1918;
+      --surface: #232120;
+      --text: #EDEAE4;
+      --text-muted: #A8A399;
+      --border: #3A3733;
+      --code-bg: #2B2926;
+      --verdict-tint: #262421;
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    padding: 1.5rem 1rem 4rem;
+  }
+
+  .page {
+    max-width: 46rem;
+    margin: 0 auto;
+  }
+
+  /* ---------- Header / metadata ---------- */
+  .report-header {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 2rem;
+  }
+
+  .report-header .kicker {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+  }
+
+  .report-header h1 {
+    font-size: 1.45rem;
+    line-height: 1.3;
+    margin-bottom: 1rem;
+    letter-spacing: -0.01em;
+  }
+
+  dl.meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+  }
+
+  dl.meta dt {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.1rem;
+  }
+
+  dl.meta dd { font-weight: 500; }
+
+  .participants { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+
+  .chip {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+  }
+  .chip.claude {
+    color: var(--claude-accent-strong);
+    background: var(--claude-tint);
+    border-color: var(--claude-accent);
+  }
+  .chip.codex {
+    color: var(--codex-accent-strong);
+    background: var(--codex-tint);
+    border-color: var(--codex-accent);
+  }
+
+  .status-pill {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.1rem 0.6rem;
+    border-radius: 999px;
+    background: var(--verdict-tint);
+    border: 1px solid var(--border);
+  }
+
+  /* ---------- Rounds ---------- */
+  .round { margin-bottom: 2.25rem; }
+
+  .round-separator {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0 0 1.1rem;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .round-separator::before,
+  .round-separator::after {
+    content: "";
+    flex: 1;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ---------- Messages ---------- */
+  article.message {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    border-radius: 10px;
+    padding: 1rem 1.25rem 1.1rem;
+    margin-bottom: 1rem;
+  }
+
+  article.message.claude {
+    border-left-color: var(--claude-accent);
+    background: var(--claude-tint);
+  }
+  article.message.codex {
+    border-left-color: var(--codex-accent);
+    background: var(--codex-tint);
+  }
+
+  .message-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .speaker {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .message.claude .speaker { color: var(--claude-accent-strong); }
+  .message.codex .speaker { color: var(--codex-accent-strong); }
+
+  .role-tag {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .message p { margin-bottom: 0.65rem; font-size: 0.95rem; }
+  .message p:last-child { margin-bottom: 0; }
+
+  .message ul {
+    margin: 0 0 0.65rem 1.25rem;
+    font-size: 0.95rem;
+  }
+  .message li { margin-bottom: 0.25rem; }
+
+  code {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    font-size: 0.85em;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.06em 0.3em;
+  }
+
+  .codeblock {
+    overflow-x: auto;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 0.35rem 0 0.75rem;
+  }
+  .codeblock pre {
+    padding: 0.8rem 1rem;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    white-space: pre;
+  }
+  .codeblock code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+  }
+
+  /* ---------- Verdict ---------- */
+  .verdict {
+    background: var(--verdict-tint);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.4rem 1.6rem;
+    margin-top: 2.5rem;
+  }
+
+  .verdict h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.9rem;
+    letter-spacing: -0.005em;
+  }
+
+  .verdict h3 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 1rem 0 0.4rem;
+  }
+  .verdict h3:first-of-type { margin-top: 0; }
+
+  .verdict ul { margin-left: 1.25rem; font-size: 0.93rem; }
+  .verdict li { margin-bottom: 0.35rem; }
+  .verdict .attribution { color: var(--text-muted); font-size: 0.85em; }
+
+  footer.page-footer {
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 30rem) {
+    body { padding: 1rem 0.6rem 3rem; }
+    .report-header { padding: 1.1rem 1.1rem; }
+    article.message { padding: 0.85rem 0.9rem 0.95rem; }
+    .verdict { padding: 1.1rem 1.1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="report-header">
+    <p class="kicker">codex-debate · debate report</p>
+    <h1>Should <code>fetch_with_retry</code> be refactored into a generic retry decorator?</h1>
+    <dl class="meta">
+      <div>
+        <dt>Date</dt>
+        <dd><time datetime="2026-08-05">August 5, 2026</time></dd>
+      </div>
+      <div>
+        <dt>Participants</dt>
+        <dd class="participants">
+          <span class="chip claude">Claude</span>
+          <span aria-hidden="true">vs</span>
+          <span class="chip codex">Codex</span>
+        </dd>
+      </div>
+      <div>
+        <dt>Rounds</dt>
+        <dd>3</dd>
+      </div>
+      <div>
+        <dt>Status</dt>
+        <dd><span class="status-pill">Consensus reached</span></dd>
+      </div>
+    </dl>
+  </header>
+
+  <main>
+
+    <section class="round" aria-labelledby="round-1">
+      <h2 class="round-separator" id="round-1">Round 1</h2>
+
+      <article class="message claude">
+        <div class="message-head">
+          <span class="speaker">Claude</span>
+          <span class="role-tag">Challenge</span>
+        </div>
+        <p>Your plan extracts the retry loop from <code>fetch_with_retry</code> into a generic <code>@retry</code> decorator applied to nine call sites. Two concerns before this goes further:</p>
+        <ul>
+          <li>Three of those call sites retry on <code>TimeoutError</code> only, while the rest retry on any <code>ConnectionError</code>. A single decorator with one exception tuple silently widens the retry surface for the timeout-only sites — retried writes to <code>/orders</code> are not idempotent.</li>
+          <li>The current loop logs the attempt count into the request-scoped tracing span. A module-level decorator has no access to that span; the plan doesn't say where that telemetry goes.</li>
+        </ul>
+        <p>How does the decorator preserve per-site exception policy and span-scoped logging without growing a configuration surface that's bigger than the duplication it removes?</p>
+      </article>
+
+      <article class="message codex">
+        <div class="message-head">
+          <span class="speaker">Codex</span>
+          <span class="role-tag">Answer</span>
+        </div>
+        <p>Both points are fair; neither kills the refactoring. The decorator was always intended to be parameterized per site, not one-size-fits-all:</p>
+        <div class="codeblock"><pre><code>@retry(on=(TimeoutError,), attempts=3, backoff=exp_backoff(base=0.2))
+def submit_order(payload: OrderPayload) -&gt; OrderResult:
+    ...</code></pre></div>
+        <p>Each call site declares its own <code>on=</code> tuple, so the timeout-only sites keep their narrow policy — nothing widens silently. For the non-idempotent <code>/orders</code> write specifically, I'd go further and exclude it from the migration entirely; retrying it is wrong under any policy without an idempotency key.</p>
+        <p>On tracing: the decorator can resolve the current span via <code>trace.get_current_span()</code> at call time instead of capture time. The span is ambient, not lexical, so a decorator sees the same span the inline loop did.</p>
+      </article>
+    </section>
+
+    <section class="round" aria-labelledby="round-2">
+      <h2 class="round-separator" id="round-2">Round 2</h2>
+
+      <article class="message claude">
+        <div class="message-head">
+          <span class="speaker">Claude</span>
+          <span class="role-tag">Challenge</span>
+        </div>
+        <p>The parameterized form answers the policy concern, but look at what it costs: <code>on=</code>, <code>attempts=</code>, and <code>backoff=</code> at every site is nine copies of configuration replacing nine copies of a loop. The duplication moved; it didn't shrink. If a team member adds a tenth site tomorrow, what stops them from picking <code>attempts=5</code> when everything else uses 3?</p>
+        <p>Also, <code>trace.get_current_span()</code> returns a no-op span when called outside a request context — your background jobs in <code>sync_worker.py</code> call two of these functions from a plain thread. The inline loops currently fall back to the module logger there. Does the decorator?</p>
+      </article>
+
+      <article class="message codex">
+        <div class="message-head">
+          <span class="speaker">Codex</span>
+          <span class="role-tag">Answer</span>
+        </div>
+        <p>Refinement accepted on the configuration sprawl: instead of raw parameters at every site, define two named policies in one place — <code>RETRY_READ</code> (broad exceptions, 3 attempts) and <code>RETRY_TIMEOUT_ONLY</code> — and have sites reference a policy, not tune knobs. A tenth site chooses between two names; divergence requires editing the shared policy, which is exactly where that decision should be reviewed.</p>
+        <p>On the no-op span: correct catch. The decorator should log attempts through a small protocol — try the active span, fall back to the module logger when the span is non-recording. That mirrors what the inline loops do today, just in one place instead of nine.</p>
+      </article>
+    </section>
+
+    <section class="round" aria-labelledby="round-3">
+      <h2 class="round-separator" id="round-3">Round 3</h2>
+
+      <article class="message claude">
+        <div class="message-head">
+          <span class="speaker">Claude</span>
+          <span class="role-tag">Challenge</span>
+        </div>
+        <p>With named policies and the span fallback, the design is sound. Last objection is sequencing, not shape: the plan migrates all nine sites in one commit. If the backoff math or the fallback logging has a bug, every network path in the service regresses at once. Migrate the two <code>sync_worker.py</code> sites first — they're the lowest-traffic and exercise the logger fallback path you just added — then convert the rest after one deploy cycle of soak.</p>
+      </article>
+
+      <article class="message codex">
+        <div class="message-head">
+          <span class="speaker">Codex</span>
+          <span class="role-tag">Answer</span>
+        </div>
+        <p>Agreed, with one amendment: land the decorator, its policies, and its unit tests in the first commit alongside the two worker sites, so the soak period tests the real implementation rather than a stub. Remaining sites follow in a second commit after one deploy cycle. The <code>/orders</code> write stays on its inline loop until it gains an idempotency key — that's a separate ticket, out of scope here.</p>
+      </article>
+    </section>
+
+    <section class="verdict" aria-labelledby="verdict-title">
+      <h2 id="verdict-title">Consensus / Verdict</h2>
+
+      <h3>Agreed</h3>
+      <ul>
+        <li>Extract the retry loop into a <code>@retry</code> decorator driven by two named policies (<code>RETRY_READ</code>, <code>RETRY_TIMEOUT_ONLY</code>) defined in one module — sites pick a policy by name, never tune raw knobs.</li>
+        <li>Attempt logging resolves the active tracing span at call time and falls back to the module logger when the span is non-recording, preserving behavior for background threads.</li>
+        <li>Migrate in two commits: decorator + policies + tests + the two <code>sync_worker.py</code> sites first, the remaining sites after one deploy cycle of soak.</li>
+        <li>The non-idempotent <code>/orders</code> write is excluded from the migration until it gains an idempotency key.</li>
+      </ul>
+
+      <h3>Remaining disagreement</h3>
+      <ul>
+        <li>Whether jitter should be added to the exponential backoff now or deferred. <span class="attribution">Claude holds it belongs in the initial policy definition to avoid a second migration; Codex considers it out of scope until retry storms are observed.</span> Deferred to the implementation PR.</li>
+      </ul>
+    </section>
+
+  </main>
+
+  <footer class="page-footer">
+    <p>Generated by the codex-debate skill · 3 rounds · Claude (Anthropic) vs Codex (OpenAI)</p>
+  </footer>
+
+</div>
+</body>
+</html>

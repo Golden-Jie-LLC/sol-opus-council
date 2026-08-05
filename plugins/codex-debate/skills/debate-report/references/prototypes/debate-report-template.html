@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Debate Report Template — all sections, all shapes</title>
+<style>
+  :root {
+    color-scheme: light dark;
+
+    /* Claude / Anthropic — terracotta "Crail" */
+    --claude-accent: #D97757;
+    --claude-accent-strong: #B85C3E;   /* darkened for text-on-light contrast */
+    --claude-tint: #FBF1ED;
+
+    /* Codex / OpenAI — ChatGPT green-teal */
+    --codex-accent: #10A37F;
+    --codex-accent-strong: #0B7A5F;    /* darkened for text-on-light contrast */
+    --codex-tint: #EBF7F3;
+
+    /* Status chips — deliberately non-brand hues (leafy green / red / amber) */
+    --ok-text: #2C6E31;
+    --ok-bg: #EAF5EB;
+    --ok-border: #9CCB9F;
+    --no-text: #A93226;
+    --no-bg: #FBEBE9;
+    --no-border: #E5A49C;
+    --open-text: #8A5D0B;
+    --open-bg: #FBF3DF;
+    --open-border: #DFC182;
+
+    --bg: #FAF9F7;
+    --surface: #FFFFFF;
+    --text: #1F1E1C;
+    --text-muted: #5C594F;
+    --border: #E4E1DA;
+    --code-bg: #F1EFEA;
+    --verdict-tint: #F4F2EE;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --claude-accent: #E08B6D;
+      --claude-accent-strong: #E8A188;
+      --claude-tint: #322622;
+
+      --codex-accent: #2BB894;
+      --codex-accent-strong: #52C9AB;
+      --codex-tint: #16302A;
+
+      --ok-text: #8FD194;
+      --ok-bg: #1E2F20;
+      --ok-border: #3E5C41;
+      --no-text: #F0968B;
+      --no-bg: #372220;
+      --no-border: #6B3B36;
+      --open-text: #E3BC69;
+      --open-bg: #322A16;
+      --open-border: #6B5A2E;
+
+      --bg: #1A1918;
+      --surface: #232120;
+      --text: #EDEAE4;
+      --text-muted: #A8A399;
+      --border: #3A3733;
+      --code-bg: #2B2926;
+      --verdict-tint: #262421;
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    padding: 1.5rem 1rem 4rem;
+  }
+
+  .page {
+    max-width: 48rem;
+    margin: 0 auto;
+  }
+
+  /* ---------- Section shells ---------- */
+  section.block { margin-bottom: 2.5rem; }
+
+  .section-head { margin-bottom: 1rem; }
+
+  .section-head h2 {
+    font-size: 1.15rem;
+    letter-spacing: -0.005em;
+  }
+
+  .used-by {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 0.15rem;
+  }
+
+  /* ---------- Header / metadata ---------- */
+  .report-header {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .report-header .kicker {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+  }
+
+  .report-header h1 {
+    font-size: 1.45rem;
+    line-height: 1.3;
+    margin-bottom: 1rem;
+    letter-spacing: -0.01em;
+  }
+
+  dl.meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+    gap: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+  }
+
+  dl.meta dt {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.1rem;
+  }
+
+  dl.meta dd { font-weight: 500; }
+
+  .meta-wide { grid-column: 1 / -1; }
+
+  .participants { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+
+  .chip {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.1rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+  }
+  .chip.claude {
+    color: var(--claude-accent-strong);
+    background: var(--claude-tint);
+    border-color: var(--claude-accent);
+  }
+  .chip.codex {
+    color: var(--codex-accent-strong);
+    background: var(--codex-tint);
+    border-color: var(--codex-accent);
+  }
+
+  .status-pill {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.1rem 0.6rem;
+    border-radius: 999px;
+    background: var(--verdict-tint);
+    border: 1px solid var(--border);
+  }
+
+  .template-note {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 0.6rem 0.9rem;
+    margin-bottom: 2rem;
+  }
+
+  /* ---------- Status chips (accepted / rejected / unresolved) ---------- */
+  .status-chip {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.08rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .status-chip.accepted   { color: var(--ok-text);   background: var(--ok-bg);   border-color: var(--ok-border); }
+  .status-chip.rejected   { color: var(--no-text);   background: var(--no-bg);   border-color: var(--no-border); }
+  .status-chip.unresolved { color: var(--open-text); background: var(--open-bg); border-color: var(--open-border); }
+
+  /* ---------- Lock / session badges ---------- */
+  .lock-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.12rem 0.6rem;
+    border-radius: 999px;
+    background: var(--verdict-tint);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .lock-badge .lock-glyph { font-size: 0.85em; }
+
+  .session-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.12rem 0.6rem;
+    border-radius: 999px;
+    color: var(--codex-accent-strong);
+    background: var(--codex-tint);
+    border: 1px dashed var(--codex-accent);
+  }
+
+  /* ---------- Panels (pre-registered, verdict, etc.) ---------- */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+  }
+
+  .panel-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .panel-head .speaker {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  .panel.claude-panel {
+    border-left: 4px solid var(--claude-accent);
+    background: var(--claude-tint);
+  }
+  .panel.claude-panel .speaker { color: var(--claude-accent-strong); }
+
+  .panel.codex-panel {
+    border-left: 4px solid var(--codex-accent);
+    background: var(--codex-tint);
+  }
+  .panel.codex-panel .speaker { color: var(--codex-accent-strong); }
+
+  .finding-list { margin: 0 0 0 1.25rem; font-size: 0.93rem; }
+  .finding-list li { margin-bottom: 0.4rem; }
+  .finding-list li:last-child { margin-bottom: 0; }
+  .finding-id { font-weight: 700; }
+
+  /* ---------- Blind commit: two locked columns ---------- */
+  .blind-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    gap: 1rem;
+  }
+
+  .overlap-note {
+    margin-top: 0.75rem;
+    font-size: 0.83rem;
+    color: var(--text-muted);
+  }
+
+  /* ---------- Rounds ---------- */
+  .round { margin-bottom: 2.25rem; }
+  .round:last-child { margin-bottom: 0; }
+
+  .round-separator {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0 0 1.1rem;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .round-separator::before,
+  .round-separator::after {
+    content: "";
+    flex: 1;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ---------- Messages ---------- */
+  article.message {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left-width: 4px;
+    border-radius: 10px;
+    padding: 1rem 1.25rem 1.1rem;
+    margin-bottom: 1rem;
+  }
+
+  article.message.claude {
+    border-left-color: var(--claude-accent);
+    background: var(--claude-tint);
+  }
+  article.message.codex {
+    border-left-color: var(--codex-accent);
+    background: var(--codex-tint);
+  }
+
+  article.message.fresh {
+    border-style: dashed;
+    border-left-style: solid;
+  }
+
+  .message-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .speaker {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .message.claude .speaker { color: var(--claude-accent-strong); }
+  .message.codex .speaker { color: var(--codex-accent-strong); }
+
+  .role-tag {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .message-head .status-chip { margin-left: auto; }
+
+  .message p { margin-bottom: 0.65rem; font-size: 0.95rem; }
+  .message p:last-child { margin-bottom: 0; }
+
+  .message ul {
+    margin: 0 0 0.65rem 1.25rem;
+    font-size: 0.95rem;
+  }
+  .message li { margin-bottom: 0.25rem; }
+
+  code {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    font-size: 0.85em;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.06em 0.3em;
+  }
+
+  .codeblock {
+    overflow-x: auto;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 0.35rem 0 0.75rem;
+  }
+  .codeblock pre {
+    padding: 0.8rem 1rem;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    white-space: pre;
+  }
+  .codeblock code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+  }
+
+  /* ---------- Ruling ledger ---------- */
+  .ledger-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 4px solid var(--claude-accent);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+  }
+
+  .ledger-scroll { overflow-x: auto; }
+
+  table.ledger {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    min-width: 34rem;
+  }
+
+  table.ledger th {
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0.4rem 0.75rem 0.4rem 0;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+  }
+
+  table.ledger td {
+    padding: 0.55rem 0.75rem 0.55rem 0;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  table.ledger tr:last-child td { border-bottom: none; }
+  table.ledger td.num { font-weight: 700; white-space: nowrap; }
+  table.ledger td.round-col { white-space: nowrap; }
+  table.ledger td .status-chip { margin-top: 0.05rem; }
+
+  .ledger-tally {
+    margin-top: 0.8rem;
+    font-size: 0.83rem;
+    color: var(--text-muted);
+  }
+
+  /* ---------- Verdict ---------- */
+  .verdict {
+    background: var(--verdict-tint);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.4rem 1.6rem;
+  }
+
+  .verdict h3 {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 1rem 0 0.4rem;
+  }
+  .verdict h3:first-child { margin-top: 0; }
+
+  .verdict ul { margin-left: 1.25rem; font-size: 0.93rem; }
+  .verdict li { margin-bottom: 0.35rem; }
+  .verdict .attribution { color: var(--text-muted); font-size: 0.85em; }
+
+  .da-subblock {
+    margin-top: 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--claude-accent);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+  }
+  .da-subblock .da-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  .da-subblock .da-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+  .da-subblock p, .da-subblock ul { font-size: 0.9rem; }
+  .da-subblock ul { margin-left: 1.25rem; }
+  .da-subblock li { margin-bottom: 0.3rem; }
+
+  /* ---------- Fresh-eyes ---------- */
+  .fresh-eyes-wrap {
+    border: 1px dashed var(--codex-accent);
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+  }
+  .fresh-eyes-wrap .fresh-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .fresh-eyes-wrap .fresh-head .speaker { color: var(--codex-accent-strong); }
+  .fresh-eyes-wrap article.message:last-child { margin-bottom: 0; }
+
+  footer.page-footer {
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  @media (max-width: 30rem) {
+    body { padding: 1rem 0.6rem 3rem; }
+    .report-header { padding: 1.1rem 1.1rem; }
+    article.message { padding: 0.85rem 0.9rem 0.95rem; }
+    .panel { padding: 1rem 1rem; }
+    .verdict { padding: 1.1rem 1.1rem; }
+    .fresh-eyes-wrap { padding: 0.9rem 0.9rem; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ================= 1. Metadata header ================= -->
+  <header class="report-header">
+    <p class="kicker">codex-debate · debate report</p>
+    <h1>Defect review of <code>src/billing/</code> — blind commit, then cross-attack</h1>
+    <dl class="meta">
+      <div>
+        <dt>Date</dt>
+        <dd><time datetime="2026-08-05">August 5, 2026</time></dd>
+      </div>
+      <div>
+        <dt>Participants</dt>
+        <dd class="participants">
+          <span class="chip codex">Codex</span>
+          <span aria-hidden="true">vs</span>
+          <span class="chip claude">Claude</span>
+        </dd>
+      </div>
+      <div>
+        <dt>Shape</dt>
+        <dd>Blind commit, then cross-attack (+ fresh-eyes verdict)</dd>
+      </div>
+      <div>
+        <dt>Mode</dt>
+        <dd>auto</dd>
+      </div>
+      <div>
+        <dt>Rigor</dt>
+        <dd>binding</dd>
+      </div>
+      <div>
+        <dt>Round cap</dt>
+        <dd>2</dd>
+      </div>
+      <div class="meta-wide">
+        <dt>Termination</dt>
+        <dd><span class="status-pill">Ended at round cap — 2 points unresolved</span></dd>
+      </div>
+      <div class="meta-wide">
+        <dt>Binding anchor</dt>
+        <dd>Pinned to commit range <code>a3f19c2..7e44b81</code> · joint list recorded against <code>src/billing/</code> at <code>7e44b81</code></dd>
+      </div>
+    </dl>
+  </header>
+
+  <p class="template-note">
+    Template note: this page demonstrates <strong>every</strong> section a codex-debate report can
+    contain, threaded through one sample debate. A real report includes only the sections its shape
+    uses — see the muted “Used by” caption under each heading. In every shape, Codex is the attacker
+    (objections, questions, prosecution) and Claude rules, answers, or defends.
+  </p>
+
+  <main>
+
+    <!-- ================= 2. Pre-registered assessment ================= -->
+    <section class="block" aria-labelledby="prereg-title">
+      <div class="section-head">
+        <h2 id="prereg-title">Pre-registered assessment</h2>
+        <p class="used-by">Used by: pre-registered assessment (shape 4)</p>
+      </div>
+      <div class="panel claude-panel">
+        <div class="panel-head">
+          <span class="speaker">Claude</span>
+          <span class="role-tag">Own assessment</span>
+          <span class="lock-badge"><span class="lock-glyph" aria-hidden="true">🔒</span> Locked in before Codex spoke</span>
+        </div>
+        <ol class="finding-list">
+          <li><span class="finding-id">C1.</span> <code>invoice.py:41</code> — <code>invoice_total</code> accumulates currency in <code>float</code>; rounding at the end hides per-line drift.</li>
+          <li><span class="finding-id">C2.</span> <code>webhooks.py:88</code> — the <code>payment.settled</code> handler has no idempotency check; a redelivered webhook credits the account twice.</li>
+          <li><span class="finding-id">C3.</span> <code>charge.py:57</code> — the retry loop backs off exponentially but without jitter; synchronized retries can stampede the payment gateway.</li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ================= 3. Blind commit ================= -->
+    <section class="block" aria-labelledby="blind-title">
+      <div class="section-head">
+        <h2 id="blind-title">Blind commit</h2>
+        <p class="used-by">Used by: blind commit, then cross-attack (shape 5)</p>
+      </div>
+      <div class="blind-grid">
+        <div class="panel claude-panel">
+          <div class="panel-head">
+            <span class="speaker">Claude</span>
+            <span class="role-tag">Findings</span>
+            <span class="lock-badge"><span class="lock-glyph" aria-hidden="true">🔒</span> Locked blind</span>
+          </div>
+          <ol class="finding-list">
+            <li><span class="finding-id">C1.</span> Float currency arithmetic in <code>invoice_total</code>.</li>
+            <li><span class="finding-id">C2.</span> No idempotency check on <code>payment.settled</code> webhooks.</li>
+            <li><span class="finding-id">C3.</span> Retry backoff lacks jitter in <code>charge.py</code>.</li>
+          </ol>
+        </div>
+        <div class="panel codex-panel">
+          <div class="panel-head">
+            <span class="speaker">Codex</span>
+            <span class="role-tag">Findings</span>
+            <span class="lock-badge"><span class="lock-glyph" aria-hidden="true">🔒</span> Locked blind</span>
+          </div>
+          <ol class="finding-list">
+            <li><span class="finding-id">X1.</span> <code>credits.py:19</code> — <code>apply_credit</code> does an unlocked read-modify-write of <code>account.balance</code>; concurrent credits race.</li>
+            <li><span class="finding-id">X2.</span> <code>periods.py:33</code> — <code>period_end</code> is compared as a timezone-naive datetime; billing day boundaries shift with the server locale.</li>
+            <li><span class="finding-id">X3.</span> <code>refunds.py:62</code> — the refund path swallows <code>GatewayError</code> and marks the invoice refunded anyway.</li>
+          </ol>
+        </div>
+      </div>
+      <p class="overlap-note">
+        Overlap between the two blind lists: <strong>0 of 6 findings</strong> — each reading covered
+        blind spots the other missed, which is why this shape exists.
+      </p>
+    </section>
+
+    <!-- ================= 4. Debate rounds ================= -->
+    <section class="block" aria-labelledby="rounds-title">
+      <div class="section-head">
+        <h2 id="rounds-title">Debate rounds</h2>
+        <p class="used-by">Used by: all shapes — role tags vary (Objection/Ruling, Question/Answer, Defense/Rebuttal)</p>
+      </div>
+
+      <section class="round" aria-labelledby="round-1">
+        <h3 class="round-separator" id="round-1">Round 1 of 2</h3>
+
+        <article class="message codex">
+          <div class="message-head">
+            <span class="speaker">Codex</span>
+            <span class="role-tag">Objection #1</span>
+            <span class="status-chip accepted">Accepted</span>
+          </div>
+          <p>Your C1 understates the defect. The drift is not merely cosmetic — it changes the total customers are charged:</p>
+          <div class="codeblock"><pre><code>def invoice_total(lines: list[Line]) -&gt; float:
+    total = 0.0
+    for line in lines:
+        total += line.qty * line.unit_price   # float cents
+    return round(total, 2)                    # hides per-line drift</code></pre></div>
+          <p>With 30+ metered lines the accumulated error crosses a cent boundary, so <code>round()</code> settles on the wrong side. This must be fixed with <code>Decimal</code> end to end in the totaling path, not patched with per-line rounding.</p>
+        </article>
+
+        <article class="message claude">
+          <div class="message-head">
+            <span class="speaker">Claude</span>
+            <span class="role-tag">Ruling on #1</span>
+          </div>
+          <p><strong>Accepted.</strong> Reproduced with a 34-line metered invoice: the float total lands one cent high. The fix converts <code>invoice_total</code> and its helpers to <code>Decimal</code> with cent quantization; C1 is upgraded from style concern to charging defect and merged with this objection in the joint list.</p>
+        </article>
+
+        <article class="message codex">
+          <div class="message-head">
+            <span class="speaker">Codex</span>
+            <span class="role-tag">Question #2</span>
+            <span class="status-chip accepted">Accepted</span>
+          </div>
+          <p>On your C2: what exactly happens today when the gateway redelivers a <code>payment.settled</code> event — and where would your proposed dedupe record live so that two concurrent deliveries cannot both pass the check?</p>
+        </article>
+
+        <article class="message claude">
+          <div class="message-head">
+            <span class="speaker">Claude</span>
+            <span class="role-tag">Answer to #2</span>
+          </div>
+          <p>Today both deliveries credit the account; nothing dedupes. The gap the question exposes is real: a check-then-insert dedupe still races. <strong>Conceded and folded into the joint list</strong> — the fix stores the gateway event id in a <code>processed_events</code> table with a unique constraint, and treats the constraint violation as “already handled”.</p>
+        </article>
+      </section>
+
+      <section class="round" aria-labelledby="round-2">
+        <h3 class="round-separator" id="round-2">Round 2 of 2</h3>
+
+        <article class="message codex">
+          <div class="message-head">
+            <span class="speaker">Codex</span>
+            <span class="role-tag">Objection #3</span>
+            <span class="status-chip rejected">Rejected</span>
+          </div>
+          <p>The Decimal migration agreed in round 1 is incomplete unless it extends to persistence: the <code>invoices.total</code> column must move to a fixed-point type in the same change, otherwise you reintroduce float on every read.</p>
+        </article>
+
+        <article class="message claude">
+          <div class="message-head">
+            <span class="speaker">Claude</span>
+            <span class="role-tag">Ruling on #3</span>
+          </div>
+          <p><strong>Rejected.</strong> The column already stores integer cents (<code>BIGINT</code>, see <code>schema.sql:112</code>); floats exist only in the in-memory totaling path that round 1 fixes. A schema migration would be churn without a defect behind it. Rebuttal stands unless Codex can show a read path that materializes the column as float — it did not.</p>
+        </article>
+
+        <article class="message codex">
+          <div class="message-head">
+            <span class="speaker">Codex</span>
+            <span class="role-tag">Objection #4</span>
+            <span class="status-chip unresolved">Unresolved</span>
+          </div>
+          <p>My X2 stands and your joint list still omits it: <code>period_end</code> comparisons are timezone-naive, so the billing day boundary moves when the host timezone changes. Pinning to UTC is a one-line fix and should go in now.</p>
+        </article>
+
+        <article class="message claude">
+          <div class="message-head">
+            <span class="speaker">Claude</span>
+            <span class="role-tag">Defense of the joint list</span>
+          </div>
+          <p>The defect is real, but “pin to UTC” is not obviously the fix: invoices are contractually cut at midnight in the <em>customer’s</em> billing timezone, and UTC pinning would shift existing customers’ period boundaries. Choosing the anchor timezone is a product decision, not a code ruling. <strong>Left unresolved</strong> — the round cap ended the debate here; the point is recorded for the owner to decide.</p>
+        </article>
+      </section>
+    </section>
+
+    <!-- ================= 5. Ruling ledger ================= -->
+    <section class="block" aria-labelledby="ledger-title">
+      <div class="section-head">
+        <h2 id="ledger-title">Ruling ledger</h2>
+        <p class="used-by">Used by: all shapes — the skill’s core deliverable</p>
+      </div>
+      <div class="ledger-panel">
+        <div class="ledger-scroll">
+          <table class="ledger">
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Objection</th>
+                <th scope="col">Round</th>
+                <th scope="col">Status</th>
+                <th scope="col">Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="num">1</td>
+                <td>Float drift changes charged totals</td>
+                <td class="round-col">1</td>
+                <td><span class="status-chip accepted">Accepted</span></td>
+                <td>Reproduced: 34-line invoice totals one cent high; Decimal fix agreed.</td>
+              </tr>
+              <tr>
+                <td class="num">2</td>
+                <td>Webhook redelivery double-credits</td>
+                <td class="round-col">1</td>
+                <td><span class="status-chip accepted">Accepted</span></td>
+                <td>Gap conceded; unique-constraint dedupe on gateway event id agreed.</td>
+              </tr>
+              <tr>
+                <td class="num">3</td>
+                <td>Decimal migration must reach the schema</td>
+                <td class="round-col">2</td>
+                <td><span class="status-chip rejected">Rejected</span></td>
+                <td>Column already stores integer cents; no float read path shown.</td>
+              </tr>
+              <tr>
+                <td class="num">4</td>
+                <td>Timezone-naive <code>period_end</code></td>
+                <td class="round-col">2</td>
+                <td><span class="status-chip unresolved">Unresolved</span></td>
+                <td>Defect real, but anchor timezone is a product decision; cap ended debate.</td>
+              </tr>
+              <tr>
+                <td class="num">F1</td>
+                <td>Dedupe table grows unbounded</td>
+                <td class="round-col">Fresh eyes</td>
+                <td><span class="status-chip accepted">Accepted</span></td>
+                <td>Agreed fix stored event ids forever; 90-day TTL added.</td>
+              </tr>
+              <tr>
+                <td class="num">F2</td>
+                <td>Multi-currency accounts uncovered</td>
+                <td class="round-col">Fresh eyes</td>
+                <td><span class="status-chip unresolved">Unresolved</span></td>
+                <td>Out of the reviewed scope; needs an owner decision on whether to expand it.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="ledger-tally">Tally: 3 accepted · 1 rejected · 2 unresolved (objection #4 and fresh-eyes finding F2).</p>
+      </div>
+    </section>
+
+    <!-- ================= 6. Consensus / Verdict ================= -->
+    <section class="block" aria-labelledby="verdict-title">
+      <div class="section-head">
+        <h2 id="verdict-title">Consensus / Verdict</h2>
+        <p class="used-by">Used by: all shapes — devil’s-advocate variant shown as the sub-block below (shape 3)</p>
+      </div>
+      <div class="verdict">
+        <h3>Agreed</h3>
+        <ul>
+          <li>Joint defect list covers C1+#1 (Decimal totaling), C2+#2 (webhook dedupe via unique constraint), C3 (retry jitter), X1 (credit race — row lock on <code>account.balance</code>), and X3 (refund path must not swallow <code>GatewayError</code>).</li>
+          <li>The <code>invoices.total</code> column stays <code>BIGINT</code> integer cents; no schema migration (objection #3 rejected).</li>
+          <li>The joint list is recorded against <code>src/billing/</code> at commit <code>7e44b81</code>, per the binding anchor.</li>
+        </ul>
+
+        <h3>Unresolved</h3>
+        <ul>
+          <li>Objection #4 — timezone anchor for <code>period_end</code>. <span class="attribution">Codex holds UTC pinning should land now; Claude holds the anchor timezone is a product decision.</span> Escalated to the owner.</li>
+          <li>Fresh-eyes finding F2 — multi-currency accounts were outside the reviewed scope; expanding scope needs an owner decision.</li>
+        </ul>
+
+        <div class="da-subblock">
+          <div class="da-head">
+            <span class="da-title">Devil’s-advocate verdict</span>
+            <span class="status-pill">Decision stands — residual risks named</span>
+            <span class="used-by" style="width:100%">Used by: devil’s advocate (shape 3) — replaces the agreed/unresolved lists above when the subject is a decision</span>
+          </div>
+          <p>Codex prosecuted the decision to keep webhook processing synchronous; Claude defended it. The decision survives on its merits, with the obligations the prosecution earned:</p>
+          <ul>
+            <li><strong>Residual risk:</strong> a gateway retry storm can saturate the worker pool; mitigation is the per-endpoint rate limit agreed in round 1.</li>
+            <li><strong>Residual risk:</strong> synchronous processing couples webhook latency to database write latency; revisit if p99 exceeds the gateway’s 10-second delivery timeout.</li>
+            <li><strong>Obligation:</strong> the rejected async alternative is re-tabled automatically if either risk materializes.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 7. Fresh-eyes verdict ================= -->
+    <section class="block" aria-labelledby="fresh-title">
+      <div class="section-head">
+        <h2 id="fresh-title">Fresh-eyes verdict</h2>
+        <p class="used-by">Used by: fresh-eyes verdict (shape 6, an add-on to any shape) — runs after consensus</p>
+      </div>
+      <div class="fresh-eyes-wrap">
+        <div class="fresh-head">
+          <span class="speaker">Codex</span>
+          <span class="session-badge">New session — no debate history</span>
+          <span class="role-tag">Attacks the agreed result</span>
+        </div>
+
+        <article class="message codex fresh">
+          <div class="message-head">
+            <span class="speaker">Codex (fresh)</span>
+            <span class="role-tag">Objection F1</span>
+            <span class="status-chip accepted">Accepted</span>
+          </div>
+          <p>The agreed webhook dedupe stores every gateway event id in <code>processed_events</code> with no expiry. At current volume that table grows by ~2M rows/month forever; the unique-constraint lookup degrades with it. The agreement shipped a slow leak.</p>
+        </article>
+
+        <article class="message claude">
+          <div class="message-head">
+            <span class="speaker">Claude</span>
+            <span class="role-tag">Ruling on F1</span>
+          </div>
+          <p><strong>Accepted.</strong> A compromise blind spot: both debaters focused on correctness of the dedupe and neither priced its growth. The joint list gains a 90-day TTL purge (the gateway redelivers for at most 72 hours, so 90 days is conservative).</p>
+        </article>
+
+        <article class="message codex fresh">
+          <div class="message-head">
+            <span class="speaker">Codex (fresh)</span>
+            <span class="role-tag">Objection F2</span>
+            <span class="status-chip unresolved">Unresolved</span>
+          </div>
+          <p>The entire joint list assumes single-currency accounts, but <code>credits.py</code> accepts a <code>currency</code> argument it never validates against the account’s ledger currency. A EUR credit applied to a USD account passes silently.</p>
+        </article>
+
+        <article class="message claude">
+          <div class="message-head">
+            <span class="speaker">Claude</span>
+            <span class="role-tag">Ruling on F2</span>
+          </div>
+          <p><strong>Unresolved.</strong> The observation is plausible, but multi-currency behavior was outside the reviewed scope pinned at <code>a3f19c2..7e44b81</code>, and validating it means expanding the review. Recorded as open for the owner rather than folded into the agreement — the binding record covers only what was reviewed.</p>
+        </article>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= 8. Footer ================= -->
+  <footer class="page-footer">
+    <p>Generated by the codex-debate skill · 2 rounds + fresh-eyes pass · Codex (OpenAI) prosecuting, Claude (Anthropic) ruling</p>
+    <p>Transcripts and the Codex session persist until removed — see the run report for paths.</p>
+  </footer>
+
+</div>
+</body>
+</html>
