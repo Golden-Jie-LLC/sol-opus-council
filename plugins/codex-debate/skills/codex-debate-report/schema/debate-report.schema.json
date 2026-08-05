@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/octanevz/codex-debate/blob/main/plugins/codex-debate/skills/debate-report/schema/debate-report.schema.json",
+  "$id": "https://github.com/octanevz/codex-debate/blob/main/plugins/codex-debate/skills/codex-debate-report/schema/debate-report.schema.json",
   "title": "codex-debate report (schemaVersion 1)",
   "description": "Input contract for scripts/render_debate_report.py. Authored within the keyword subset that scripts/validate_debate_report.py interprets: type, properties, required, additionalProperties, enum, const, items, minItems, pattern, oneOf, $ref/$defs.",
   "type": "object",
