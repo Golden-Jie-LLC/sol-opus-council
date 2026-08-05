@@ -12,16 +12,24 @@ its own output, round-trips it, and exits nonzero on any mismatch.
 
 The ruling ledger is DERIVED from the objection entries carried on messages in
 `rounds` and `freshEyes.messages` — the JSON has no separate ledger array.
+
+Input validation is delegated to validate_debate_report.py, which interprets
+schema/debate-report.schema.json — the single source of truth for the input
+shape. Only the schemaVersion gate stays here; nothing is written unless the
+input validates and renders in full.
 """
 
 import argparse
 import html
 import json
-import re
 import sys
 from pathlib import Path
 
+import validate_debate_report
+
 SCHEMA_VERSION = 1
+
+SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema" / "debate-report.schema.json"
 
 ISLAND_OPEN = '<script type="application/json" id="debate-data">'
 ISLAND_CLOSE = "</script>"
@@ -37,8 +45,6 @@ PANEL_CLASS = {"claude": "claude-panel", "codex": "codex-panel"}
 
 STATUSES = ("accepted", "rejected", "unresolved")
 STATUS_LABEL = {"accepted": "Accepted", "rejected": "Rejected", "unresolved": "Unresolved"}
-
-BLOCK_TYPES = ("paragraph", "list", "code")
 
 MONTHS = (
     "January", "February", "March", "April", "May", "June",
@@ -569,77 +575,8 @@ def esc(value):
 
 # ---------------------------------------------------------------- validation
 
-def _require(container, key, kinds, where, allow_none=False):
-    if key not in container:
-        raise ReportError(f"missing required field {where}.{key}")
-    value = container[key]
-    if value is None and allow_none:
-        return value
-    if not isinstance(value, kinds):
-        names = "/".join(k.__name__ for k in (kinds if isinstance(kinds, tuple) else (kinds,)))
-        raise ReportError(f"field {where}.{key} must be {names}, got {type(value).__name__}")
-    return value
-
-
-def _validate_finding(finding, where):
-    if not isinstance(finding, dict):
-        raise ReportError(f"{where} must be an object")
-    _require(finding, "id", str, where)
-    _require(finding, "text", str, where)
-
-
-def _validate_blocks(blocks, where):
-    if not isinstance(blocks, list) or not blocks:
-        raise ReportError(f"{where} must be a non-empty array of content blocks")
-    for i, block in enumerate(blocks):
-        bw = f"{where}[{i}]"
-        if not isinstance(block, dict):
-            raise ReportError(f"{bw} must be an object")
-        btype = _require(block, "type", str, bw)
-        if btype not in BLOCK_TYPES:
-            raise ReportError(f"{bw}.type must be one of {BLOCK_TYPES}, got {btype!r}")
-        if btype == "paragraph":
-            _require(block, "text", str, bw)
-        elif btype == "code":
-            _require(block, "code", str, bw)
-        elif btype == "list":
-            items = _require(block, "items", list, bw)
-            if not items or not all(isinstance(item, str) for item in items):
-                raise ReportError(f"{bw}.items must be a non-empty array of strings")
-
-
-def _validate_message(msg, where):
-    if not isinstance(msg, dict):
-        raise ReportError(f"{where} must be an object")
-    speaker = _require(msg, "speaker", str, where)
-    if speaker not in SPEAKERS:
-        raise ReportError(f"{where}.speaker must be one of {tuple(SPEAKERS)}, got {speaker!r}")
-    _require(msg, "role", str, where)
-    if "objection" in msg:
-        obj = msg["objection"]
-        ow = f"{where}.objection"
-        if not isinstance(obj, dict):
-            raise ReportError(f"{ow} must be an object")
-        _require(obj, "id", str, ow)
-        _require(obj, "title", str, ow)
-        status = _require(obj, "status", str, ow)
-        if status not in STATUSES:
-            raise ReportError(f"{ow}.status must be one of {STATUSES}, got {status!r}")
-        _require(obj, "reason", str, ow)
-    _validate_blocks(_require(msg, "content", list, where), f"{where}.content")
-
-
-def _validate_verdict_items(items, where):
-    for i, item in enumerate(items):
-        iw = f"{where}[{i}]"
-        if not isinstance(item, dict):
-            raise ReportError(f"{iw} must be an object")
-        _require(item, "text", str, iw)
-        if "attribution" in item and not isinstance(item["attribution"], str):
-            raise ReportError(f"{iw}.attribution must be a string")
-
-
 def validate(data):
+    """Gate on schemaVersion, then enforce the JSON Schema file in full."""
     if not isinstance(data, dict):
         raise ReportError("top level must be a JSON object")
     version = data.get("schemaVersion")
@@ -647,96 +584,10 @@ def validate(data):
         raise ReportError(
             f"unsupported schemaVersion {version!r}; this renderer supports {SCHEMA_VERSION}"
         )
-
-    _require(data, "subject", str, "$")
-    date = _require(data, "date", str, "$")
-    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
-        raise ReportError(f"$.date must be ISO YYYY-MM-DD, got {date!r}")
-    month = int(date[5:7])
-    if not 1 <= month <= 12:
-        raise ReportError(f"$.date has invalid month: {date!r}")
-    participants = _require(data, "participants", list, "$")
-    if not participants or not all(p in ("claude", "codex") for p in participants):
-        raise ReportError("$.participants must be a non-empty array of 'claude'/'codex'")
-    for key in ("shape", "mode", "rigor", "termination"):
-        _require(data, key, str, "$")
-    _require(data, "roundCap", int, "$")
-    _require(data, "bindingAnchor", str, "$", allow_none=True)
-
-    if "preRegistered" in data:
-        pre = data["preRegistered"]
-        speaker = _require(pre, "speaker", str, "$.preRegistered")
-        if speaker not in PANEL_CLASS:
-            raise ReportError("$.preRegistered.speaker must be 'claude' or 'codex'")
-        _require(pre, "role", str, "$.preRegistered")
-        _require(pre, "lockLabel", str, "$.preRegistered")
-        findings = _require(pre, "findings", list, "$.preRegistered")
-        for i, finding in enumerate(findings):
-            _validate_finding(finding, f"$.preRegistered.findings[{i}]")
-
-    if "blindCommit" in data:
-        blind = data["blindCommit"]
-        columns = _require(blind, "columns", list, "$.blindCommit")
-        if not columns:
-            raise ReportError("$.blindCommit.columns must be non-empty")
-        for c, col in enumerate(columns):
-            cw = f"$.blindCommit.columns[{c}]"
-            speaker = _require(col, "speaker", str, cw)
-            if speaker not in PANEL_CLASS:
-                raise ReportError(f"{cw}.speaker must be 'claude' or 'codex'")
-            _require(col, "role", str, cw)
-            _require(col, "lockLabel", str, cw)
-            for i, finding in enumerate(_require(col, "findings", list, cw)):
-                _validate_finding(finding, f"{cw}.findings[{i}]")
-        if "overlapNote" in blind and not isinstance(blind["overlapNote"], str):
-            raise ReportError("$.blindCommit.overlapNote must be a string")
-
-    rounds = _require(data, "rounds", list, "$")
-    if not rounds:
-        raise ReportError("$.rounds must be a non-empty array")
-    for r, rnd in enumerate(rounds):
-        rw = f"$.rounds[{r}]"
-        if not isinstance(rnd, dict):
-            raise ReportError(f"{rw} must be an object")
-        messages = _require(rnd, "messages", list, rw)
-        if not messages:
-            raise ReportError(f"{rw}.messages must be non-empty")
-        for m, msg in enumerate(messages):
-            _validate_message(msg, f"{rw}.messages[{m}]")
-
-    verdict = _require(data, "verdict", dict, "$")
-    _validate_verdict_items(_require(verdict, "agreed", list, "$.verdict"), "$.verdict.agreed")
-    _validate_verdict_items(
-        _require(verdict, "unresolved", list, "$.verdict"), "$.verdict.unresolved"
-    )
-    if "devilsAdvocate" in verdict:
-        da = verdict["devilsAdvocate"]
-        dw = "$.verdict.devilsAdvocate"
-        _require(da, "title", str, dw)
-        _require(da, "outcome", str, dw)
-        _require(da, "intro", str, dw)
-        points = _require(da, "points", list, dw)
-        for i, point in enumerate(points):
-            pw = f"{dw}.points[{i}]"
-            if not isinstance(point, dict):
-                raise ReportError(f"{pw} must be an object")
-            _require(point, "text", str, pw)
-            if "label" in point and not isinstance(point["label"], str):
-                raise ReportError(f"{pw}.label must be a string")
-
-    if "freshEyes" in data:
-        fresh = data["freshEyes"]
-        fw = "$.freshEyes"
-        speaker = _require(fresh, "speaker", str, fw)
-        if speaker not in PANEL_CLASS:
-            raise ReportError(f"{fw}.speaker must be 'claude' or 'codex'")
-        _require(fresh, "sessionBadge", str, fw)
-        _require(fresh, "role", str, fw)
-        messages = _require(fresh, "messages", list, fw)
-        if not messages:
-            raise ReportError(f"{fw}.messages must be non-empty")
-        for m, msg in enumerate(messages):
-            _validate_message(msg, f"{fw}.messages[{m}]")
+    schema = validate_debate_report.load_schema(SCHEMA_PATH)
+    violations = validate_debate_report.validate(data, schema)
+    if violations:
+        raise ReportError("input does not match the schema:\n  " + "\n  ".join(violations))
 
 
 # ---------------------------------------------------------------- rendering
@@ -1186,7 +1037,7 @@ def main(argv=None):
     try:
         validate(data)
         rendered = render(data)
-    except ReportError as err:
+    except (ReportError, validate_debate_report.SchemaError) as err:
         print(f"error: {err}", file=sys.stderr)
         return 2
 
