@@ -1,1 +1,0 @@
-Get a second opinion from Codex on the position document at ./subject.md: debate it with Codex until you both agree, applying any concessions, and let Codex apply the agreed edits to subject.md itself. Then report the outcome.

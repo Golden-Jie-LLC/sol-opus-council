@@ -1,8 +1,0 @@
-{
-  // Case .md files are payloads delivered verbatim to agents (task prompts,
-  // debate subjects), not documents: headings would enter the payload (MD041),
-  // and layout follows payload structure (MD032).
-  "extends": "../../../.markdownlint.jsonc",
-  "MD041": false,
-  "MD032": false
-}

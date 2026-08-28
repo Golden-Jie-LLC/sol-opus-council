@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://golden-jie-llc.github.io/sol-opus-council/schemas/prompt-review.schema.json",
+  "title": "PROMPT execution-readiness review",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "round",
+    "verdict",
+    "accepted_resolutions",
+    "blocking_objections",
+    "non_blocking_suggestions",
+    "incorrect_or_missing_assumptions",
+    "proposed_changes",
+    "execution_readiness"
+  ],
+  "properties": {
+    "round": { "type": "integer", "minimum": 1, "maximum": 10 },
+    "verdict": { "type": "string", "enum": ["READY_FOR_CODEX", "REVISION_REQUIRED"] },
+    "accepted_resolutions": { "type": "array", "items": { "type": "string" } },
+    "blocking_objections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "target", "issue", "why_it_matters", "required_change"],
+        "properties": {
+          "id": { "type": "string" },
+          "target": { "type": "string" },
+          "issue": { "type": "string" },
+          "why_it_matters": { "type": "string" },
+          "required_change": { "type": "string" }
+        }
+      }
+    },
+    "non_blocking_suggestions": { "type": "array", "items": { "type": "string" } },
+    "incorrect_or_missing_assumptions": { "type": "array", "items": { "type": "string" } },
+    "proposed_changes": { "type": "array", "items": { "type": "string" } },
+    "execution_readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "user_intent_preserved",
+        "material_requirements_present",
+        "material_constraints_present",
+        "no_material_contradictions",
+        "context_sufficient_for_execution",
+        "implementation_scope_clear",
+        "material_edge_cases_addressed",
+        "verification_sufficient",
+        "no_unresolved_material_placeholders",
+        "ready_for_codex_execution"
+      ],
+      "properties": {
+        "user_intent_preserved": { "type": "boolean" },
+        "material_requirements_present": { "type": "boolean" },
+        "material_constraints_present": { "type": "boolean" },
+        "no_material_contradictions": { "type": "boolean" },
+        "context_sufficient_for_execution": { "type": "boolean" },
+        "implementation_scope_clear": { "type": "boolean" },
+        "material_edge_cases_addressed": { "type": "boolean" },
+        "verification_sufficient": { "type": "boolean" },
+        "no_unresolved_material_placeholders": { "type": "boolean" },
+        "ready_for_codex_execution": { "type": "boolean" }
+      }
+    }
+  }
+}

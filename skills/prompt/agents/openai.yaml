@@ -1,0 +1,7 @@
+interface:
+  display_name: "PROMPT"
+  short_description: "Sol and Opus sign off a Codex task prompt"
+  default_prompt: "Use $prompt to create a Codex execution prompt through the Sol–Opus council."
+
+policy:
+  allow_implicit_invocation: false

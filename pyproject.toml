@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sol-opus-council"
+version = "0.1.0"
+description = "Codex-native QUESTION and PROMPT council workflows backed by read-only Claude Opus"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Golden Jie LLC" },
+  { name = "octanevz", email = "octanevz@gmx.net" },
+]
+dependencies = []
+
+[project.scripts]
+sol-opus-council = "sol_opus_council.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
