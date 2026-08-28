@@ -71,6 +71,14 @@ class InstallerTests(unittest.TestCase):
         self.assertIn("allow_implicit_invocation: false", question)
         self.assertIn("allow_implicit_invocation: false", prompt)
 
+    def test_skills_require_narrow_claude_session_persistence(self) -> None:
+        result = install("repo", self.repo, self.source)
+        root = Path(result["skills_root"])
+        for name in ("question", "prompt"):
+            skill = (root / name / "SKILL.md").read_text(encoding="utf-8")
+            self.assertIn("~/.claude/projects", skill)
+            self.assertIn("never use `--continue`", skill)
+
 
 if __name__ == "__main__":
     unittest.main()

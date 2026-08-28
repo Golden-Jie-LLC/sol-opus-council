@@ -100,6 +100,10 @@ the prompt or modifies the business repository.
 - Python 3.11 or newer.
 - Codex CLI authenticated with the intended ChatGPT/Codex account.
 - Claude Code CLI authenticated with a Claude subscription that can use Opus.
+- Permission for Claude Code to persist local transcripts in its configured
+  projects directory (normally `~/.claude/projects`), because review rounds
+  resume the exact initial session UUID. In a sandboxed Codex run, grant only
+  that directory—not the business repository—if prompted.
 - The Codex host should be GPT-5.6 Sol. When the session exposes a different
   model identity, the skills stop instead of silently substituting a model.
 
@@ -173,10 +177,11 @@ ${CODEX_HOME:-$HOME/.codex}/council/runs/<timestamp>-<run-id>/
 ```
 
 Artifacts include the versioned context packet and hashes, blind positions,
-unique per-attempt prompt/stdout/stderr/parsed files, explicit session metadata,
-candidate versions, structured reviews, ledger, status, manifest, usage
-metadata when available, and the final answer or prompt. Credentials and full
-environment dumps are never stored.
+unique per-attempt prompt/stdout/stderr/parsed files, canonical and normalized
+runtime schema snapshots/hashes with schema audit metadata, explicit session
+metadata, candidate versions, structured reviews, ledger, status, manifest,
+usage metadata when available, and the final answer or prompt. Credentials and
+full environment dumps are never stored.
 
 The relevant request, evidence, and permitted repository content are sent to
 Claude through the local CLI. Claude subscription usage applies. The runtime
@@ -198,6 +203,11 @@ supported. The adapter sends prompts over stdin and never relies on Bash.
 - **Claude not found:** set `CLAUDE_BIN` or install Claude Code, then run doctor.
 - **Claude not logged in:** run the interactive `claude auth login` flow locally
   and rerun doctor. Never paste credentials or one-time codes into Codex chat.
+- **Resume says “No conversation found”:** confirm the initial call could write
+  its transcript to the configured Claude projects directory (normally
+  `~/.claude/projects`). In a sandbox, grant that directory narrowly and restart
+  the blind phase from a new canonical run; a returned UUID without a transcript
+  cannot be repaired or replaced with `--continue`.
 - **Opus unavailable:** stop. The council deliberately has no Sonnet/Haiku
   fallback.
 - **Missing context:** supply only the material item listed by the run; at most

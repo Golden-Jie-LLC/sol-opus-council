@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -16,8 +17,11 @@ from sol_opus_council.errors import (
     OpusUnavailableError,
     ProcessError,
     ProcessTimeoutError,
+    SchemaCompatibilityError,
 )
-from tests.helpers import initial
+from sol_opus_council.schema_validation import load_schema, validate_schema
+from sol_opus_council.util import canonical_json, sha256_text
+from tests.helpers import initial, prompt_review, question_review
 
 
 class ClaudeAdapterTests(unittest.TestCase):
@@ -146,6 +150,100 @@ class ClaudeAdapterTests(unittest.TestCase):
         self.response(1, self.normal(total_cost_usd=0.01))
         result = self.adapter().invoke("prompt", "initial")
         self.assertEqual(result.usage["total_cost_usd"], 0.01)
+
+    def test_all_provider_schemas_are_normalized_without_losing_constraints(self) -> None:
+        cases = (
+            ("initial", initial()),
+            ("question-review", question_review(1, ready=True)),
+            ("prompt-review", prompt_review(1, ready=True)),
+        )
+        for number, (schema_name, structured_output) in enumerate(cases, start=1):
+            self.response(number, self.normal(structured_output=structured_output))
+            result = self.adapter().invoke(
+                "prompt", schema_name, session_id=self.session_id if number > 1 else None
+            )
+            runtime = json.loads(
+                (result.call_directory / "runtime-schema.json").read_text(encoding="utf-8")
+            )
+            expected = load_schema(schema_name)
+            expected.pop("$schema")
+            expected.pop("$id")
+            self.assertEqual(runtime, expected)
+            self.assertNotIn("$schema", runtime)
+            self.assertNotIn("$id", runtime)
+
+    def test_schema_artifacts_distinguish_canonical_identity_from_runtime_payload(self) -> None:
+        self.response(1, self.normal())
+        result = self.adapter().invoke("prompt", "initial")
+        call = result.call_directory
+        canonical_text = (call / "canonical-schema.json").read_text(encoding="utf-8")
+        runtime_text = (call / "runtime-schema.json").read_text(encoding="utf-8").rstrip("\n")
+        audit = json.loads((call / "schema-audit.json").read_text(encoding="utf-8"))
+        argv = json.loads((call / "argv.json").read_text(encoding="utf-8"))
+        wire_schema = argv[argv.index("--json-schema") + 1]
+
+        self.assertEqual(json.loads(canonical_text)["$schema"], audit["canonical_schema_dialect"])
+        self.assertEqual(json.loads(canonical_text)["$id"], audit["canonical_schema_id"])
+        self.assertEqual(audit["removed_top_level_metadata"], ["$schema", "$id"])
+        self.assertEqual(wire_schema, runtime_text)
+        self.assertEqual(sha256_text(canonical_text), audit["canonical_schema_sha256"])
+        self.assertEqual(sha256_text(runtime_text), audit["runtime_schema_sha256"])
+        self.assertEqual(
+            (call / "canonical-schema.sha256").read_text(encoding="utf-8").strip(),
+            audit["canonical_schema_sha256"],
+        )
+        self.assertEqual(
+            (call / "runtime-schema.sha256").read_text(encoding="utf-8").strip(),
+            audit["runtime_schema_sha256"],
+        )
+        self.assertEqual(canonical_text, canonical_json(load_schema("initial")))
+
+    def test_host_validation_receives_the_original_canonical_schema(self) -> None:
+        self.response(1, self.normal())
+        with patch(
+            "sol_opus_council.claude_cli.validate_schema", wraps=validate_schema
+        ) as validator:
+            self.adapter().invoke("prompt", "initial")
+        schema_argument = validator.call_args.args[1]
+        self.assertIn("$schema", schema_argument)
+        self.assertIn("$id", schema_argument)
+
+    def test_claude_2_1_247_regression_fixture_rejects_canonical_and_accepts_runtime(self) -> None:
+        fixture = Path(__file__).parent / "fixtures" / "claude-code-2.1.247-schema-rejection.json"
+        raw_root = self.root / "raw-rejection"
+        raw_env = dict(os.environ)
+        raw_env["FAKE_CLAUDE_ROOT"] = str(raw_root)
+        raw_env["FAKE_CLAUDE_SCHEMA_COMPAT_FIXTURE"] = str(fixture)
+        canonical = load_schema("initial")
+        rejected = subprocess.run(
+            [*self.command, "--json-schema", json.dumps(canonical)],
+            input="prompt",
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+            env=raw_env,
+        )
+        self.assertEqual(rejected.returncode, 1)
+        self.assertIn("no schema with key or ref", rejected.stderr)
+
+        os.environ["FAKE_CLAUDE_SCHEMA_COMPAT_FIXTURE"] = str(fixture)
+        self.response(1, self.normal())
+        result = self.adapter().invoke("prompt", "initial")
+        runtime = json.loads(
+            (result.call_directory / "runtime-schema.json").read_text(encoding="utf-8")
+        )
+        self.assertNotIn("$schema", runtime)
+
+    def test_unsupported_schema_fails_before_child_process(self) -> None:
+        unsupported = load_schema("initial")
+        unsupported["unevaluatedProperties"] = False
+        with (
+            patch("sol_opus_council.claude_cli.load_schema", return_value=unsupported),
+            self.assertRaises(SchemaCompatibilityError),
+        ):
+            self.adapter().invoke("prompt", "initial")
+        self.assertFalse((self.fake_root / "count.txt").exists())
 
 
 if __name__ == "__main__":

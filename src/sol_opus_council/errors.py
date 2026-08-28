@@ -33,6 +33,10 @@ class SchemaValidationError(MalformedOutputError):
     """Structured output did not satisfy the selected schema."""
 
 
+class SchemaCompatibilityError(PreflightError):
+    """A canonical schema cannot be represented safely at the provider boundary."""
+
+
 class ProtocolStateError(CouncilError):
     """A protocol action was attempted out of order."""
 

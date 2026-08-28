@@ -35,6 +35,14 @@ def main() -> int:
     call.mkdir()
     (call / "argv.json").write_text(json.dumps(args), encoding="utf-8")
     (call / "prompt.txt").write_text(sys.stdin.read(), encoding="utf-8")
+    compatibility_fixture = os.environ.get("FAKE_CLAUDE_SCHEMA_COMPAT_FIXTURE")
+    if compatibility_fixture:
+        fixture = json.loads(Path(compatibility_fixture).read_text(encoding="utf-8"))
+        schema = json.loads(args[args.index("--json-schema") + 1])
+        rejected = fixture.get("reject_top_level_keywords", [])
+        if any(keyword in schema for keyword in rejected):
+            print(fixture["stderr"], file=sys.stderr)
+            return int(fixture.get("return_code", 1))
     response_path = root / "responses" / f"{count:02d}.json"
     response = json.loads(response_path.read_text(encoding="utf-8"))
     if response.get("__sleep"):

@@ -20,6 +20,12 @@ repository, create branches, commit, push, or execute implementation work.
 3. Run the launcher's `doctor` command. Claude must be authenticated and the
    detected CLI must support the required flags. Never request an API key or
    use the Anthropic API.
+4. Claude must be able to persist its local transcript so the explicit session
+   UUID can be resumed. If the Codex sandbox blocks the configured Claude
+   projects directory (normally `~/.claude/projects`), request narrowly scoped
+   write permission for that directory before `opus-initial`. Do not broaden
+   this to business-repository write access and never use `--continue` as a
+   workaround.
 
 ## Freeze independent inputs
 

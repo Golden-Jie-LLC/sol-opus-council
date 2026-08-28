@@ -22,8 +22,9 @@ from .errors import (
     ProcessTimeoutError,
     SchemaValidationError,
 )
+from .schema_compat import REMOVED_ROOT_METADATA, normalize_schema_for_claude
 from .schema_validation import load_schema, validate_schema
-from .util import atomic_write_json, atomic_write_text
+from .util import atomic_write_json, atomic_write_text, canonical_json, sha256_text
 
 READ_ONLY_TOOLS = ("Read", "Glob", "Grep", "WebSearch", "WebFetch")
 REQUIRED_FLAGS = (
@@ -131,7 +132,9 @@ class ClaudeCLIAdapter:
             raise AuthenticationError("Claude Code is not logged in")
         return self._features
 
-    def build_args(self, schema: dict[str, Any], session_id: str | None = None) -> list[str]:
+    def build_args(
+        self, runtime_schema: dict[str, Any], session_id: str | None = None
+    ) -> list[str]:
         args = [
             *self.command,
             "-p",
@@ -142,7 +145,7 @@ class ClaudeCLIAdapter:
             "--output-format",
             "json",
             "--json-schema",
-            json.dumps(schema, ensure_ascii=False, separators=(",", ":")),
+            json.dumps(runtime_schema, ensure_ascii=False, separators=(",", ":")),
             "--safe-mode",
             "--strict-mcp-config",
             "--mcp-config",
@@ -162,7 +165,12 @@ class ClaudeCLIAdapter:
         self, prompt: str, schema_name: str, *, session_id: str | None = None
     ) -> ClaudeResult:
         self.preflight()
-        schema = load_schema(schema_name)
+        canonical_schema = load_schema(schema_name)
+        runtime_schema = normalize_schema_for_claude(canonical_schema)
+        canonical_schema_text = canonical_json(canonical_schema)
+        runtime_schema_text = json.dumps(runtime_schema, ensure_ascii=False, separators=(",", ":"))
+        canonical_schema_hash = sha256_text(canonical_schema_text)
+        runtime_schema_hash = sha256_text(runtime_schema_text)
         transient_attempts = 0
         malformed_attempts = 0
         attempt = 0
@@ -172,7 +180,23 @@ class ClaudeCLIAdapter:
             call_dir = self.artifact_root / "calls" / f"{attempt:02d}-{uuid4().hex}"
             call_dir.mkdir(parents=True, exist_ok=False)
             atomic_write_text(call_dir / "prompt.txt", current_prompt)
-            args = self.build_args(schema, session_id)
+            atomic_write_text(call_dir / "canonical-schema.json", canonical_schema_text)
+            atomic_write_text(call_dir / "canonical-schema.sha256", canonical_schema_hash + "\n")
+            atomic_write_text(call_dir / "runtime-schema.json", runtime_schema_text + "\n")
+            atomic_write_text(call_dir / "runtime-schema.sha256", runtime_schema_hash + "\n")
+            atomic_write_json(
+                call_dir / "schema-audit.json",
+                {
+                    "schema_name": schema_name,
+                    "canonical_schema_id": canonical_schema["$id"],
+                    "canonical_schema_dialect": canonical_schema["$schema"],
+                    "canonical_schema_sha256": canonical_schema_hash,
+                    "runtime_schema_sha256": runtime_schema_hash,
+                    "removed_top_level_metadata": list(REMOVED_ROOT_METADATA),
+                    "runtime_serialization": "compact UTF-8 JSON; ensure_ascii=false",
+                },
+            )
+            args = self.build_args(runtime_schema, session_id)
             atomic_write_json(call_dir / "argv.json", args)
             started = time.monotonic()
             creationflags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
@@ -224,7 +248,7 @@ class ClaudeCLIAdapter:
                     structured = json.loads(raw["result"])
                 if not isinstance(structured, dict):
                     raise ValueError("structured_output is missing")
-                validate_schema(structured, schema)
+                validate_schema(structured, canonical_schema)
                 result_session = raw.get("session_id") or session_id
                 if not isinstance(result_session, str):
                     raise ValueError("session_id is missing")

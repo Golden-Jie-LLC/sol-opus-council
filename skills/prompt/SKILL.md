@@ -20,6 +20,12 @@ must not execute that prompt or modify the user's business repository.
 3. Run `council.py doctor`. Claude must be authenticated. Use the Claude Code
    subscription login only—never an Anthropic API key, MCP server, daemon, or
    non-Opus fallback.
+4. Claude must be able to persist its local transcript so the explicit session
+   UUID can be resumed. If the Codex sandbox blocks the configured Claude
+   projects directory (normally `~/.claude/projects`), request narrowly scoped
+   write permission for that directory before `opus-initial`. Do not broaden
+   this to business-repository write access and never use `--continue` as a
+   workaround.
 
 ## Freeze independent inputs
 

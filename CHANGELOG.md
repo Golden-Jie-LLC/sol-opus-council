@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Normalize canonical Draft 2020-12 schemas at the Claude Code provider
+  boundary for Claude Code 2.1.247 while preserving host-side validation and
+  all structural constraints.
+- Record canonical/runtime schema identities and exact payload hashes per call,
+  fail closed on unsupported schema constructs, and cover the observed CLI
+  rejection with a deterministic regression fixture.
+- Force UTF-8 CLI JSON output on Windows legacy consoles and document the
+  narrow Claude transcript permission required for explicit session resume.
+
 ## 0.1.0 - 2026-08-28
 
 - Reverse the host/peer architecture so Codex is the only UI and Claude Code

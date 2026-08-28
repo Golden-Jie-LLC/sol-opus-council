@@ -17,6 +17,13 @@ from .protocol import CouncilCoordinator, CouncilMode
 from .util import canonical_json, default_runs_root
 
 
+def _print_json(value: dict[str, Any]) -> None:
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if callable(reconfigure):
+        reconfigure(encoding="utf-8", errors="strict")
+    print(canonical_json(value), end="")
+
+
 def _json_file(path: str | None) -> dict[str, Any]:
     if not path:
         return {}
@@ -156,11 +163,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         result = execute(build_parser().parse_args(argv))
     except (CouncilError, OSError, ValueError, json.JSONDecodeError) as exc:
-        print(
-            canonical_json({"ok": False, "error": type(exc).__name__, "message": str(exc)}), end=""
-        )
+        _print_json({"ok": False, "error": type(exc).__name__, "message": str(exc)})
         return 1
-    print(canonical_json({"ok": True, "result": result}), end="")
+    _print_json({"ok": True, "result": result})
     return 0
 
 

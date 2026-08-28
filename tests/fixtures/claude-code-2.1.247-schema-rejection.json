@@ -1,0 +1,6 @@
+{
+  "claude_code_version": "2.1.247",
+  "reject_top_level_keywords": ["$schema"],
+  "return_code": 1,
+  "stderr": "Error: --json-schema is not a valid JSON Schema: no schema with key or ref \"https://json-schema.org/draft/2020-12/schema\""
+}
