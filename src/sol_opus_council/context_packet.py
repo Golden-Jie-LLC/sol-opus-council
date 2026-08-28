@@ -19,6 +19,24 @@ LIST_FIELDS = (
     "out_of_scope",
 )
 
+PROVIDER_AUTHORIZATION = {
+    "basis": "explicit_council_invocation",
+    "provider": "Anthropic Claude Opus via local Claude Code CLI",
+    "scope": "minimum task-relevant context",
+    "additional_provider_confirmation_required": False,
+    "stricter_governing_prohibitions_still_apply": True,
+}
+
+PROVIDER_DATA_BOUNDARY = {
+    "exclude_by_default": [
+        "secrets_api_keys_credentials_env",
+        "personal_financial_account_or_holdings_data",
+        "bulk_raw_private_database_contents",
+        "unrelated_private_material",
+    ],
+    "restricted_sensitive_material_requires_separate_handling": True,
+}
+
 
 def _git(repo: Path, *args: str) -> str:
     completed = subprocess.run(
@@ -84,6 +102,11 @@ class ContextPacket:
                 "desired_output",
                 "A reviewed answer" if mode == "QUESTION" else "A reviewed Codex execution prompt",
             ),
+            "provider_authorization": dict(PROVIDER_AUTHORIZATION),
+            "provider_data_boundary": {
+                "exclude_by_default": list(PROVIDER_DATA_BOUNDARY["exclude_by_default"]),
+                "restricted_sensitive_material_requires_separate_handling": True,
+            },
         }
         for field in LIST_FIELDS:
             value = extra.pop(field, [])

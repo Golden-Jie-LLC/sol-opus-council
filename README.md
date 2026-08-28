@@ -94,6 +94,34 @@ the prompt or modifies the business repository.
 - Council artifacts are outside the business repository by default, so a run
   does not pollute its Git status.
 
+### Explicit invocation is provider authorization
+
+Calling `$question` or `$prompt` is an explicit user action whose purpose is to
+run the Sol–Opus council. That invocation therefore authorizes that one council
+run to send the **minimum task-relevant context** to Anthropic Claude Opus via
+the local Claude Code CLI. The skill must not ask for a second provider-consent
+confirmation merely because Claude is a non-OpenAI model.
+
+If a repository policy merely says that sending material to an external or
+non-OpenAI model requires explicit user authorization, the explicit council
+invocation satisfies that requirement. A genuinely stricter policy still wins:
+if governing instructions explicitly forbid sending project material to
+Anthropic/non-OpenAI/external providers even with user authorization, or mark
+specific material as non-exportable, the council stops rather than transmitting
+that material.
+
+The invocation covers task-relevant user text, attachments, repository context,
+evidence, and prior decisions. It does **not** implicitly authorize secrets, API
+keys, credentials, `.env` contents, personal financial account or holdings data,
+bulk raw private database contents, or unrelated private material. Those must
+be excluded/redacted by default; if they are genuinely required, use a safer
+sanitized alternative or handle that sensitive material separately and
+explicitly.
+
+Every canonical context packet records the authorization basis, provider,
+scope, whether another provider confirmation is required, and the restricted
+data boundary so the decision is auditable with the run artifacts.
+
 ## Requirements
 
 - Windows, macOS, or Linux.
@@ -203,6 +231,12 @@ supported. The adapter sends prompts over stdin and never relies on Bash.
 - **Claude not found:** set `CLAUDE_BIN` or install Claude Code, then run doctor.
 - **Claude not logged in:** run the interactive `claude auth login` flow locally
   and rerun doctor. Never paste credentials or one-time codes into Codex chat.
+- **Council asks for provider consent again:** when you explicitly invoked
+  `$question` or `$prompt`, a policy that merely requires explicit user
+  authorization is already satisfied. Re-check the installed skill version and
+  governing instructions. A second confirmation should appear only for a
+  genuinely stricter external-provider prohibition or restricted sensitive
+  material.
 - **Resume says “No conversation found”:** confirm the initial call could write
   its transcript to the configured Claude projects directory (normally
   `~/.claude/projects`). In a sandbox, grant that directory narrowly and restart
