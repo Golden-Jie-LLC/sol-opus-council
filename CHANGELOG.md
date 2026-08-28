@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Treat explicit `$question` / `$prompt` invocation as authorization for that
+  council run to send the minimum task-relevant context to Claude Opus, so
+  policies that merely require explicit user authorization do not trigger a
+  redundant second provider-consent prompt.
+- Preserve stricter governing prohibitions and exclude restricted sensitive
+  material such as secrets, credentials, `.env` contents, personal financial
+  account/holdings data, bulk raw private databases, and unrelated private
+  material from implicit council authorization.
+- Record the provider-authorization basis and data boundary in every canonical
+  context packet for auditability.
 - Normalize canonical Draft 2020-12 schemas at the Claude Code provider
   boundary for Claude Code 2.1.247 while preserving host-side validation and
   all structural constraints.
