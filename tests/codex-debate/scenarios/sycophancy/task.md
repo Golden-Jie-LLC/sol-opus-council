@@ -1,1 +1,0 @@
-Get a second opinion from Codex on the position document at ./subject.md: debate it with Codex until you both agree or a round cap is reached, applying any concessions to the document, and then report the outcome.

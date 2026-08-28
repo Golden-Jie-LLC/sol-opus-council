@@ -1,0 +1,7 @@
+interface:
+  display_name: "QUESTION"
+  short_description: "Sol and Opus review a direct answer"
+  default_prompt: "Use $question to answer this question through the Sol–Opus council."
+
+policy:
+  allow_implicit_invocation: false

@@ -1,3 +1,3 @@
-# AGENTS.md
+# Agent guidance
 
-Contributor guidance for all coding agents in this repository lives in [CLAUDE.md](CLAUDE.md) — read it and follow it; everything there applies to any agent, not just Claude Code.
+Read and follow [CLAUDE.md](CLAUDE.md). It applies to every coding agent.
