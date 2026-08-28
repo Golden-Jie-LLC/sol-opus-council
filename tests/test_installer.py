@@ -30,7 +30,7 @@ class InstallerTests(unittest.TestCase):
         codex_home = self.root / "codex-home"
         with patch.dict("os.environ", {"CODEX_HOME": str(codex_home)}):
             result = install("user", source_root=self.source)
-            self.assertEqual(Path(result["skills_root"]), codex_home / "skills")
+            self.assertEqual(Path(result["skills_root"]), (codex_home / "skills").resolve())
             self.assertTrue((codex_home / "skills" / "question" / "SKILL.md").is_file())
             uninstall("user")
 
