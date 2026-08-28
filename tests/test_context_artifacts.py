@@ -42,6 +42,25 @@ class ContextArtifactTests(unittest.TestCase):
         self.assertEqual(first.render(), second.render())
         self.assertEqual(first.sha256, second.sha256)
 
+    def test_context_packet_records_explicit_provider_authorization(self) -> None:
+        packet = ContextPacket.build(mode="QUESTION", run_id="x", user_request="same")
+        authorization = packet.payload["provider_authorization"]
+        self.assertEqual(authorization["basis"], "explicit_council_invocation")
+        self.assertIn("Anthropic Claude Opus", authorization["provider"])
+        self.assertEqual(authorization["scope"], "minimum task-relevant context")
+        self.assertFalse(authorization["additional_provider_confirmation_required"])
+        self.assertTrue(authorization["stricter_governing_prohibitions_still_apply"])
+
+    def test_context_packet_records_restricted_sensitive_data_boundary(self) -> None:
+        packet = ContextPacket.build(mode="PROMPT", run_id="x", user_request="same")
+        boundary = packet.payload["provider_data_boundary"]
+        excluded = set(boundary["exclude_by_default"])
+        self.assertIn("secrets_api_keys_credentials_env", excluded)
+        self.assertIn("personal_financial_account_or_holdings_data", excluded)
+        self.assertIn("bulk_raw_private_database_contents", excluded)
+        self.assertIn("unrelated_private_material", excluded)
+        self.assertTrue(boundary["restricted_sensitive_material_requires_separate_handling"])
+
     def test_context_repair_increments_version(self) -> None:
         coordinator = self.coordinator()
         old_hash = coordinator.artifacts.state()["context_hash"]
